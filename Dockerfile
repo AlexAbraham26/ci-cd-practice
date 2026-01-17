@@ -8,7 +8,9 @@ WORKDIR /app
 COPY requirements.txt .
 
 # 4. Install dependencies
-RUN pip install --no-cache-dir -r requirements.txt
+RUN apt-get update && apt-get upgrade -y && \
+    pip install --no-cache-dir -r requirements.txt && \
+    rm -rf /var/lib/apt/lists/*
 
 # 5. Copy the rest of your source code
 COPY . .
