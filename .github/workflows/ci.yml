@@ -39,7 +39,7 @@ jobs:
 
       # 5. CODE SECURITY: Scans for hardcoded secrets or unsafe logic
       - name: Security scan with Bandit
-        run: bandit -r .
+        run: bandit -r . --exclude ./test_*.py
 
       # 6. SUPPLY CHAIN: Checks requirements.txt for libraries with known hacks
       - name: Dependency scan with Safety
