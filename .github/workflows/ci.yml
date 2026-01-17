@@ -1,0 +1,63 @@
+# The name that appears in the GitHub Actions tab
+name: Python Production CI
+
+# Trigger: Defines when the automation starts
+on:
+  push:
+    branches: [ "main" ]  # Run when code is merged to main
+  pull_request:
+    branches: [ "main" ]  # Run when someone proposes a change to main
+
+jobs:
+  # A single job that handles everything from linting to image scanning
+  build-and-test:
+    # Use a fresh Ubuntu Virtual Machine provided by GitHub
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. CLONE: Pulls your code from the repo onto the Ubuntu VM
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # 2. RUNTIME: Installs the specific Python version you chose
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      # 3. PROvision: Install the tools (Linters/Security) and your app dependencies
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install flake8 bandit safety pytest
+          pip install -r requirements.txt
+
+      # 4. LINT: Checks for "ugly" code or syntax errors
+      # This specific command stops the build on critical errors (E9, F63, etc.)
+      - name: Lint with flake8
+        run: flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+
+      # 5. CODE SECURITY: Scans for hardcoded secrets or unsafe logic
+      - name: Security scan with Bandit
+        run: bandit -r .
+
+      # 6. SUPPLY CHAIN: Checks requirements.txt for libraries with known hacks
+      - name: Dependency scan with Safety
+        run: safety check
+
+      # 7. LOGIC TEST: Runs your Pytest suite to ensure the app works
+      - name: Run unit tests
+        run: pytest
+
+      # 8. ARTIFACT: Packages the app into a Docker image
+      - name: Build Docker Image
+        run: docker build -t employee-app:latest .
+
+      # 9. CONTAINER SECURITY: Scans the Linux layers for OS vulnerabilities
+      - name: Scan Image with Trivy
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'employee-app:latest'
+          format: 'table'
+          severity: 'CRITICAL,HIGH'
+          exit-code: '1' # This ensures the build FAILS if a high-risk bug is found
